@@ -1,0 +1,9 @@
+{
+  "build": {
+    "installCommand": "npm install",
+    "startCommand": "node server.js"
+  },
+  "run": {
+    "port": 3000
+  }
+}
