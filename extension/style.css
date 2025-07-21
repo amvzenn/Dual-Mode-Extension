@@ -1,0 +1,221 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 500px;
+  height: 500px;
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+body.theme-red-white {
+  background-color: #ffffff;
+  color: #b30000;
+}
+
+body.theme-red-black {
+  background-color: #111;
+  color: #ff4d4d;
+}
+
+.content {
+  flex-shrink: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, #ff4d4d, #b30000);
+  color: white;
+  border-bottom: 2px solid #ffcccc;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.theme-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.theme-switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 24px;
+}
+
+.theme-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 24px;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.2);
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+.theme-switch input:checked + .slider {
+  background-color: #ff4d4d;
+}
+
+.theme-switch input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+input {
+  width: calc(100% - 32px);
+  margin: 14px 16px 8px;
+  padding: 10px 12px;
+  border: 2px solid #ff4d4d;
+  border-radius: 12px;
+  font-size: 15px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  box-shadow: 0 2px 6px rgba(255, 77, 77, 0.2);
+}
+
+input:focus {
+  border-color: #e60000;
+  box-shadow: 0 0 0 3px rgba(255, 77, 77, 0.3);
+}
+
+.controls {
+  text-align: center;
+  margin: 0 auto 12px;
+}
+
+#openBtn {
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(to right, #ff4d4d, #cc0000);
+  color: white;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(255, 77, 77, 0.4);
+  transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
+}
+
+#openBtn:hover {
+  background-color: #e60000;
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(255, 77, 77, 0.5);
+}
+
+.control-group {
+  display: flex;
+  gap: 10px;
+  justify-content: space-around;
+  padding: 10px 16px;
+  margin: 0 auto;
+}
+
+.control-group button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 12px;
+  background-color: #b30000;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.control-group button:hover {
+  background-color: #ff1a1a;
+  transform: translateY(-1px);
+}
+
+button.selected {
+  box-shadow: 0 0 0 3px rgba(255, 77, 77, 0.4);
+  background-color: #cc0000;
+}
+
+#iframeWrapper {
+  flex-grow: 1;
+  position: relative;
+  padding: 0;
+  box-sizing: border-box;
+  border-top: 1px solid #eee;
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.05);
+  background: #fafafa;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.scroll-wrapper {
+  width: 95%;
+  height: 95%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,77,77,0.4) transparent;
+}
+
+.scroll-wrapper::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.scroll-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-wrapper::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 77, 77, 0.3);
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 77, 77, 0.4);
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.scroll-wrapper:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 77, 77, 0.5);
+  transform: scaleX(1.2);
+}
+
+.iframe-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 12px 12px 0 0;
+  display: block;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: box-shadow 0.3s ease;
+  pointer-events: auto;
+}

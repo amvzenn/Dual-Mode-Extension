@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dual Mode Web Viewer</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js" defer></script>
+  <script src="popup.js" defer></script>
+  <script src="logic.js" defer></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 500px;
+      height: 500px;
+      font-family: 'Inter', sans-serif;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #iframeLoader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(0,0,0,0.1);
+      border-top: 4px solid #b30000;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: none;
+      z-index: 2;
+    }
+
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    #iframeWrapper {
+      flex-grow: 1;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #fafafa;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .iframe-container {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .iframe-container::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 10px;
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .iframe-container iframe {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      box-sizing: border-box;
+      display: block;
+      overflow-y: scroll;
+      overflow-x: hidden;
+    }
+  </style>
+</head>
+<body class="theme-red-white">
+  <div class="content">
+    <div class="header">
+      <img src="icon.png" alt="Extension Logo" width="24" height="24">
+      <span class="theme-label">Theme</span>
+      <label class="theme-switch">
+        <input type="checkbox" id="themeToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <input type="text" id="urlInput" placeholder="Enter URL" />
+
+    <div class="controls">
+      <button id="openBtn">Open</button>
+    </div>
+
+    <div class="control-group">
+      <button data-popup-size="small">Popup: Small</button>
+      <button data-popup-size="medium">Popup: Medium</button>
+      <button data-popup-size="large">Popup: Large</button>
+    </div>
+  </div>
+
+  <div id="iframeWrapper">
+    <div id="iframeLoader"></div>
+    <div class="iframe-container">
+      <iframe id="siteFrame" frameborder="0" scrolling="yes"></iframe>
+    </div>
+  </div>
+</body>
+</html>
