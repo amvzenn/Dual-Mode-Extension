@@ -100,6 +100,17 @@ window.BASE_PROXY_URL = "http://localhost:3001";
 
 ---
 
+## 🔐 Stealth Browsing
+
+This extension is designed for discreet access to websites:
+
+* Websites either load inside an iframe or open in a separate Chrome popup.
+* If you're browsing privately, simply **click outside** the popup window or extension interface — it will **automatically hide itself**.
+* Ideal for stealthy use in restricted or monitored environments.
+* *(Coming soon:)* A feature to **clear browsing history and login session data** directly from the extension.
+
+---
+
 ## 📄 License
 
 MIT – open source and free to use.
@@ -108,4 +119,4 @@ MIT – open source and free to use.
 
 ## ✨ Credits
 
-Built with ❤️ by Hassan Nasir | GitHub: \amvzenn
+Built with ❤️ by Hassan Nasir | GitHub: amvzenn
