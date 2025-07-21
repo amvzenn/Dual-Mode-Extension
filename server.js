@@ -1,77 +1,89 @@
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const cors = require('cors');
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
+const cheerio = require("cheerio"); // 🔧 Used for HTML rewriting
 
 const app = express();
+const PORT = process.env.PORT || 3001;
 
-// Replace this with your real extension ID
-const EXTENSION_ID = 'lkgkgaofkdmpjdohddlekjkcbdekikao';
+app.use(cors());
 
-const allowedOrigins = [
-  `chrome-extension://${EXTENSION_ID}`,
-  'http://localhost:3001'
-];
+// Helper to check if CSP headers exist
+function hasCSP(headers) {
+  const cspHeaders = [
+    "content-security-policy",
+    "content-security-policy-report-only",
+    "x-webkit-csp",
+    "x-content-security-policy",
+  ];
+  return cspHeaders.some((header) => headers[header]);
+}
 
-// CORS: allow extension + localhost
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS: ' + origin));
-    }
-  },
-  credentials: true
-}));
-
-// Validate query param
-app.use('/proxy', (req, res, next) => {
+// 🔍 HEAD-only route to detect CSP
+app.head("/proxy", async (req, res) => {
   const targetUrl = req.query.url;
-  if (!targetUrl) return res.status(400).send('Missing "url" query param');
+  if (!targetUrl) return res.status(400).send("Missing url param");
+
   try {
-    new URL(targetUrl);
-    next();
-  } catch (e) {
-    return res.status(400).send('Invalid URL: ' + targetUrl);
+    const response = await axios.head(targetUrl, { timeout: 5000 });
+    const hasPolicy = hasCSP(response.headers);
+    res.set("x-csp-detected", hasPolicy ? "true" : "false");
+    res.sendStatus(200);
+  } catch (err) {
+    console.error("🔴 HEAD request error:", err.message);
+    res.set("x-csp-detected", "false");
+    res.sendStatus(200); // fallback to allow iframe
   }
 });
 
-// Main proxy handler
-app.use('/proxy', createProxyMiddleware({
-  target: 'http://example.com', // dummy
-  changeOrigin: true,
-  credentials: 'include',
-  cookieDomainRewrite: '',
+// 🌐 Full proxy with HTML rewriting + CSP stripping
+app.get("/proxy", async (req, res) => {
+  const targetUrl = req.query.url;
+  if (!targetUrl) return res.status(400).send("Missing url param");
 
-  router: (req) => {
-    const url = new URL(req.query.url);
-    return url.origin;
-  },
+  try {
+    const response = await axios.get(targetUrl, {
+      timeout: 10000,
+      responseType: "text",
+      headers: { "User-Agent": "Mozilla/5.0 (Proxy)" },
+    });
 
-  pathRewrite: (path, req) => {
-    const url = new URL(req.query.url);
-    return url.pathname + url.search;
-  },
+    const headers = { ...response.headers };
+    const contentType = headers["content-type"] || "";
 
-  onProxyRes: (proxyRes, req, res) => {
-    const hasCSP = !!proxyRes.headers['content-security-policy'];
-    const hasXFO = !!proxyRes.headers['x-frame-options'];
+    // Remove CSP headers
+    [
+      "content-security-policy",
+      "content-security-policy-report-only",
+      "x-webkit-csp",
+      "x-content-security-policy",
+    ].forEach((h) => delete headers[h]);
 
-    // Let client-side know if there's CSP/XFO
-    if (hasCSP || hasXFO) {
-      res.setHeader('x-csp-detected', 'true');
+    res.set(headers);
+
+    // If it's HTML, inject <base> to fix relative paths
+    if (contentType.includes("text/html")) {
+      const $ = cheerio.load(response.data);
+
+      // Inject base tag at top of <head>
+      $("head").prepend(`<base href="${targetUrl}">`);
+
+      // Optional: make all <a> tags open in new tab
+      $("a").attr("target", "_blank");
+
+      res.send($.html());
     } else {
-      res.setHeader('x-csp-detected', 'false');
+      // Not HTML (e.g., image, CSS) — serve as-is
+      res.send(response.data);
     }
+  } catch (err) {
+    console.error("🔴 Proxy error:", err.code || err.message);
+    if (!res.headersSent) {
+      res.status(500).send("Proxy failed: " + err.message);
+    }
+  }
+});
 
-    // Strip frame-blocking headers for actual iframe rendering
-    delete proxyRes.headers['content-security-policy'];
-    delete proxyRes.headers['x-frame-options'];
-  },
-
-  logLevel: 'warn'
-}));
-
-app.listen(3001, () => {
-  console.log('✅ Proxy with CSP header detection running at http://localhost:3001');
+app.listen(PORT, () => {
+  console.log(`🚀 Proxy server listening on port ${PORT}`);
 });
