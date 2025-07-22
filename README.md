@@ -1,6 +1,6 @@
 # 🔁 Dual Mode Extension & Proxy Server
 
-This project contains a Chrome extension and a lightweight proxy server to enable popup fallback for web content that restricts iframe embedding.
+A Chrome extension with a lightweight proxy server that enables fallback popups for websites that block iframe embedding. Includes advanced theme support and a modern, animated UI.
 
 ---
 
@@ -8,30 +8,42 @@ This project contains a Chrome extension and a lightweight proxy server to enabl
 
 ```
 .
-├── extension/               # Chrome extension UI & logic
-│   ├── background.js        # Background service worker (extension lifecycle)
-│   ├── config.js            # Global constants or configuration values
-│   ├── manifest.json        # Chrome Extension manifest (v3)
-│   ├── popup.html           # HTML UI: input, toggle, iframe container
-│   ├── popup.js             # UI logic: proxy routing, theme, popup fallback
-│   └── style.css            # Theme styling, layout, animation, custom scrollbars
+├── extension/             # Chrome extension UI & logic
+│   ├── background.js          # Background service worker (extension lifecycle)
+│   ├── config.js              # Global configuration values
+│   ├── cookies.js             # Manages cookies and site data
+│   ├── dark_theme.css         # Dedicated dark mode styles
+│   ├── history.js             # (Planned) History management
+│   ├── icons/                 # Extension icons (e.g., gear, back)
+│   ├── lava_lamp.css          # Styling for animated lava lamp background
+│   ├── lava_lamp_animation.js # Lava lamp animation JS
+│   ├── logic.js               # (Planned) Core logic
+│   ├── manifest.json          # Chrome Extension manifest (v3)
+│   ├── pageswitch.js          # Page switching logic
+│   ├── popup.html             # UI: input, theme toggle, iframe container
+│   ├── popup.js               # Logic: URL handling, fallback, theme, proxy
+│   └── style.css              # Base styling, layout, animations
 │
-└── proxy-server/            # Backend proxy deployed via Zeabur
-    ├── package.json         # Node.js dependencies for proxy
-    ├── package-lock.json    # Lock file
-    ├── server.js            # Express server for popup redirection
-    └── zbpack.json          # Zeabur deployment configuration
+└── proxy-server/          # Backend proxy (Zeabur-hosted)
+    ├── server.js              # Express server: proxy, CSP stripping, theme injection
+    ├── package.json           # Node.js dependencies
+    ├── package-lock.json      # Dependency lock
+    └── zbpack.json            # Zeabur deployment config
 ```
 
 ---
 
-## 🌐 Proxy Server (`proxy-server/server.js`)
+## 🌐 Proxy Server (proxy-server/server.js)
 
-* Deployed via [Zeabur](https://zeabur.com) to: `https://dual-mode-server.zeabur.app`
-* Proxies URLs and supports fallback popup viewing for CSP-restricted pages
-* Responds to both `GET` and `HEAD` requests (used for CSP detection)
+**Live:** [https://dual-mode-server.zeabur.app](https://dual-mode-server.zeabur.app)
 
-To host locally:
+### Features:
+
+* Proxies all URLs
+* Supports GET and HEAD (for CSP checks)
+* Dynamically injects theme CSS (light/dark)
+
+### Local Setup:
 
 ```bash
 cd proxy-server
@@ -39,84 +51,96 @@ npm install
 node server.js
 ```
 
-Then update `BASE_PROXY_URL` in `popup.js` to:
+Update `BASE_PROXY_URL` in `extension/popup.js`:
 
 ```js
-window.BASE_PROXY_URL = "http://localhost:3001";
+window.BASE_PROXY_URL = location.hostname === "localhost"
+  ? "http://localhost:3001"
+  : "https://your-deployment-url"; //Replace with local host if you want to host locally
 ```
 
+## 🧰 Chrome Extension
+
+### Key Files:
+
+#### `popup.html`
+
+* Input, theme toggle, iframe container
+* Back/Settings icons
+
+#### `popup.js`
+
+* URL normalization (`https://` prefix)
+* CSP detection
+* Popup fallback if iframe fails
+* Saves user preferences (theme, size)
+
+#### `style.css`
+
+* Light/Dark theme UI
+* Custom scrollbars
+* Smooth transitions, shadows
+
+#### `dark_theme.css`
+
+* Aggressive dark styling
+* Consistent red-tinted themes
+* Supports animated backgrounds
+
+#### `cookies.js`
+
+* Clears cookies and login data per site
+
+#### `background.js`
+
+* Listens for popup events
+* Manages opened popup windows
+
 ---
 
-## 🧩 Chrome Extension (`/extension`)
+## 🛠️ Installation & Usage
 
-### `popup.html`
-
-* Layout for input, theme switch, buttons, and iframe
-* Injects proxy-wrapped URL into iframe or opens as popup
-
-### `popup.js`
-
-* Normalizes URLs
-* Detects and bypasses CSP-restricted pages
-* Saves theme and popup size to local storage
-* Opens Chrome popup window if embedding fails
-
-### `style.css`
-
-* Dual theme (light/dark)
-* Fully animated buttons and layout
-* Custom transparent scrollbars
-* Smooth iframe shadow, hover effects, and clean UI
-
-### `background.js`
-
-* Listens for messages from popup and manages popup window state
-
----
-
-## 🛠 Installation & Usage
-
-1. Go to the [Releases tab](https://github.com/amvzenn/Dual-Mode-Server/releases)
-
-   * Download the latest `.zip`
-   * Unzip it
-
-2. **Load the Extension**:
-
-   * Go to `chrome://extensions`
-   * Enable "Developer Mode"
-   * Click "Load unpacked" and select the `extension/` folder from the unzipped release
-
-3. *(Optional)* Run the Proxy Server locally (see above)
+1. Go to **Releases** tab
+2. Download and unzip the latest release
+3. Open `chrome://extensions`
+4. Enable **Developer Mode**
+5. Click **Load unpacked** and select `extension/`
+6. (Optional) Start local proxy (see above)
 
 ---
 
 ## ✅ Features
 
-* 🌓 Light/Dark theme toggle
-* 🔗 Auto-resizing popup window options
-* 🧠 CSP detection to choose iframe vs popup
-* 🧼 Modern UI with animations, shadows, and custom scrollbars
+* 🌃 Light/Dark theme toggle with smooth animations
+* 🔌 Auto-popup fallback for iframe-blocked sites (CSP detection)
+* 🔗 Proxy-injected dark/light CSS into websites
+* 📏 URL normalization (auto-prepend protocol)
+* 💪 Resizable popup buttons (Compact, Medium, Full)
+* 🔄 Animated iframe transitions and background
+* 🧼 Custom scrollbars, shadow effects
+* 🗑️ Clear history and cookies by domain
 
 ---
 
 ## 🔐 Stealth Browsing
 
-This extension is designed for discreet access to websites:
+Designed for discreet access:
 
-* Websites either load inside an iframe or open in a separate Chrome popup.
-* If you're browsing privately, simply **click outside** the popup window or extension interface — it will **automatically hide itself**.
-* Ideal for stealthy use in restricted or monitored environments.
-* *(Coming soon:)* A feature to **clear browsing history and login session data** directly from the extension.
+* Loads content in iframe or popup depending on restrictions
+* Popup auto-closes on loss of focus
+* Wipes session data via settings
+
+Perfect for monitored environments where subtlety is key.
 
 ---
 
 ## 📄 License
 
-MIT – open source and free to use.
+MIT - Open source & free to use
 
 ---
 
 ## ✨ Credits
 
-Built with ❤️ by Hassan Nasir | GitHub: amvzenn
+Built with ❤️ by [Hassan Nasir](https://github.com/amvzenn)
+Supported by my best friend: アモリ💫
