@@ -1,0 +1,33 @@
+/* lava_lamp.css */
+
+#lavaLampBackground {
+  position: fixed; /* Position relative to the viewport */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2; /* Place it behind all other content */
+  pointer-events: none; /* Allow mouse events to pass through to elements below */
+  overflow: hidden; /* Hide any parts of the blobs that go outside this container */
+}
+
+.metasvg {
+  position: absolute;
+  /* Scale the SVG larger than its container to ensure blobs are always visible
+     and can move smoothly across the entire visible area without being cut off abruptly. */
+  top: -50%; 
+  left: -50%; 
+  width: 200%; 
+  height: 200%; 
+  overflow: visible; /* Crucial: allows the blobs inside the <g> to render outside the SVG's initial viewBox */
+}
+
+/* Styling for the individual blobs */
+.blobb {
+  transform-origin: center center; /* Ensure transformations (if any) are from the center */
+}
+
+/* Filter for the gooey effect */
+/* Note: The filter is defined directly in popup.html within the SVG <defs> */
+/* The blur value (stdDeviation) in feGaussianBlur controls the "gooeyness" */
+/* The values in feColorMatrix control the contrast and alpha for the blending effect */

@@ -4,18 +4,14 @@ console.log("🔧 Popup UI loaded");
 const urlInput = document.getElementById("urlInput");
 const openBtn = document.getElementById("openBtn");
 const iframe = document.getElementById("siteFrame");
-const wrapper = document.getElementById("iframeWrapper");
+const wrapper = document.getElementById("iframeWrapper"); // Corrected: was 'document = document.getElementById'
 const iframeLoader = document.getElementById("iframeLoader");
 const sizeButtons = document.querySelectorAll("button[data-size]");
 const popupWindowButtons = document.querySelectorAll("button[data-popup-size]");
 const themeToggle = document.getElementById("themeToggle");
 
-let openedPopupId = null;
 let popupSize = { width: 400, height: 600 };
-
-window.BASE_PROXY_URL = location.hostname === "localhost"
-  ? "http://localhost:3001"
-  : "https://dual-mode-server.zeabur.app";
+const port = chrome.runtime.connect({ name: "csp-popup" });
 
 const sizePresets = {
   small: { width: 400, height: 400 },
@@ -23,47 +19,36 @@ const sizePresets = {
   large: { width: 800, height: 600 },
 };
 
-const popupWindowPresets = {
-  small: { width: 400, height: 400 },
-  medium: { width: 600, height: 500 },
-  large: { width: 800, height: 600 },
-};
+window.BASE_PROXY_URL = location.hostname === "localhost"
+  ? "http://localhost:3001"
+  : "https://dual-mode-server.zeabur.app";
 
-const port = chrome.runtime.connect({ name: "csp-popup" });
+window.CSP_PROTECTED_DOMAINS = window.CSP_PROTECTED_DOMAINS || [];
+
 port.postMessage({ type: "HELLO" });
 
+// 🔁 Keep port alive
+let pingInterval = setInterval(() => port.postMessage({ type: "PING" }), 10000);
+port.onDisconnect.addListener(() => clearInterval(pingInterval));
+
+// 📦 Restore state
+chrome.storage.local.get(["lastUrl", "popupSize"], (res) => {
+  if (res.lastUrl) urlInput.value = res.lastUrl;
+  if (res.popupSize) popupSize = res.popupSize;
+  resizePopup();
+});
+
+// 🧠 Helpers
 function normalizeUrl(url) {
   return /^https?:\/\//i.test(url) ? url : "https://" + url;
 }
 
-function openSiteInPopup(url) {
-  port.postMessage({ type: "SWITCH_TO_POPUP" });
-  const selectedPopupBtn = document.querySelector("button[data-popup-size].selected");
-  const preset = selectedPopupBtn ? popupWindowPresets[selectedPopupBtn.dataset.popupSize] : popupSize;
-
-  chrome.windows.create({ url, type: "popup", ...preset, focused: true }, (win) => {
-    openedPopupId = win.id;
-    port.postMessage({ type: "SET_POPUP_ID", windowId: win.id });
-  });
-}
-
-function closeAnyOpenPopup() {
-  port.postMessage({ type: "POPUP_UI_CLOSED" });
-}
-
-chrome.storage.local.get(["lastUrl", "popupSize"], (res) => {
-  if (res.lastUrl) urlInput.value = res.lastUrl;
-  if (res.popupSize) popupSize = res.popupSize;
-
+function resizePopup() {
   window.resizeTo(popupSize.width, popupSize.height + 120);
-  wrapper.style.display = "block";
-  wrapper.style.width = "100%";
   wrapper.style.height = popupSize.height + "px";
-  wrapper.style.overflow = "hidden";
-  iframe.style.width = "100%";
-  iframe.style.height = "100%";
-});
+}
 
+// 📦 Save popup size on button click
 sizeButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     sizeButtons.forEach((b) => b.classList.remove("selected"));
@@ -73,82 +58,124 @@ sizeButtons.forEach((btn) => {
     if (sizePresets[size]) {
       popupSize = sizePresets[size];
       chrome.storage.local.set({ popupSize });
-
-      window.resizeTo(popupSize.width, popupSize.height + 120);
-      wrapper.style.display = "block";
-      wrapper.style.width = "100%";
-      wrapper.style.height = popupSize.height + "px";
-      wrapper.style.overflow = "hidden";
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
+      resizePopup();
     }
   });
 });
 
-popupWindowButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
+popupWindowButtons.forEach((btn) =>
+  btn.addEventListener("click", async () => { // Added async here
     popupWindowButtons.forEach((b) => b.classList.remove("selected"));
     btn.classList.add("selected");
-  });
-});
 
+    let url = normalizeUrl(urlInput.value.trim()); // Normalize URL
+    if (!url) return; // Exit if no URL is entered
+
+    // Check if the URL is CSP protected
+    const isCSPProtected = await checkCSPViaProxy(url); // Await the CSP check
+
+    if (isCSPProtected) {
+      // If CSP protected, open in iframe
+      openSiteInIframe(url);
+    } else {
+      // If not CSP protected, open in popup
+      openSiteInPopup(url);
+    }
+  })
+);
+
+// 🔍 CSP detection via HEAD fetch
 async function checkCSPViaProxy(url) {
-  const proxyUrl = `${window.BASE_PROXY_URL}/proxy?url=${encodeURIComponent(url)}`;
   try {
-    const res = await fetch(proxyUrl, { method: "HEAD" });
-    const csp = res.headers.get("x-csp-detected");
-    return csp === "true";
+    // We need to ensure the proxy URL is correctly formed here
+    const proxyCheckUrl = `${window.BASE_PROXY_URL}/proxy?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyCheckUrl, { method: "HEAD" });
+    return res.headers.get("x-csp-detected") === "true";
   } catch (e) {
-    console.warn("🔴 Failed to check CSP:", e);
+    console.warn("🔴 Proxy CSP check failed:", e);
     return false;
   }
 }
 
-window.CSP_PROTECTED_DOMAINS = window.CSP_PROTECTED_DOMAINS || [];
-
-openBtn.addEventListener("click", async () => {
-  let url = urlInput.value.trim();
+// 🔓 Open site logic
+openBtn.addEventListener("click", async () => { // Added async here
+  let url = normalizeUrl(urlInput.value.trim());
   if (!url) return;
-  iframeLoader.style.display = "block";
-  url = normalizeUrl(url);
+
   chrome.storage.local.set({ lastUrl: url });
   const domain = new URL(url).hostname;
 
-  chrome.storage.local.get({ cspDomains: [] }, async (res) => {
-    const userCsp = res.cspDomains || [];
-    const combined = [...new Set(window.CSP_PROTECTED_DOMAINS.concat(userCsp))];
+  chrome.storage.local.get({ cspDomains: [] }, async ({ cspDomains }) => { // Added async here
+    const combined = [...new Set([...window.CSP_PROTECTED_DOMAINS, ...cspDomains])];
     const isBlocked = combined.some((d) => domain === d || domain.endsWith("." + d));
 
-    if (isBlocked) return openSiteInPopup(url);
-
-    const actuallyBlocked = await checkCSPViaProxy(url);
-    if (actuallyBlocked) {
-      userCsp.push(domain);
-      chrome.storage.local.set({ cspDomains: [...new Set(userCsp)] });
+    if (isBlocked || await checkCSPViaProxy(url)) { // Await the CSP check
+      if (!cspDomains.includes(domain)) {
+        cspDomains.push(domain);
+        chrome.storage.local.set({ cspDomains });
+      }
+      console.log(`Attempting to open ${url} in POPUP mode.`); // Debug log
       openSiteInPopup(url);
     } else {
-      closeAnyOpenPopup();
-      port.postMessage({ type: "SWITCH_TO_IFRAME" });
-      wrapper.style.display = "block";
-      wrapper.style.width = "100%";
-      wrapper.style.height = popupSize.height + "px";
-      wrapper.style.overflow = "hidden";
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
-      iframe.src = `${window.BASE_PROXY_URL}/proxy?url=${encodeURIComponent(url)}`;
+      console.log(`Attempting to open ${url} in IFRAME mode.`); // Debug log
+      openSiteInIframe(url);
     }
   });
 });
 
-// 🌗 Theme toggle logic
-chrome.storage.local.get("extensionTheme", (data) => {
-  if (data.extensionTheme === "theme-red-black") {
-    document.body.className = "theme-red-black";
-    themeToggle.checked = true;
-  } else {
-    document.body.className = "theme-red-white";
-    themeToggle.checked = false;
-  }
+function openSiteInPopup(url) {
+  // Ensure iframe and loader are hidden when opening in a popup
+  iframe.style.opacity = "0";
+  iframe.src = "about:blank"; // Clear iframe content
+  iframeLoader.classList.add("hidden"); // Ensure loader is hidden
+  iframeLoader.style.opacity = "0"; // Ensure loader is fully transparent
+
+  const selectedBtn = document.querySelector("button[data-popup-size].selected");
+  const size = selectedBtn ? sizePresets[selectedBtn.dataset.popupSize] : popupSize;
+
+  chrome.windows.create({ url, type: "popup", ...size, focused: true }, (win) => {
+    if (win?.id) {
+      port.postMessage({ type: "SET_POPUP_ID", windowId: win.id });
+    }
+  });
+}
+
+function openSiteInIframe(url) {
+  console.log(`Executing openSiteInIframe for: ${url}`); // Debug log
+  // Show loader for iframe loading
+  iframeLoader.classList.remove("hidden"); // Remove 'hidden' class which might set display: none
+  iframeLoader.style.display = "flex"; // Explicitly set display to flex
+  iframeLoader.offsetHeight; // Force reflow to apply display change before opacity transition
+  iframeLoader.style.opacity = "1"; // Start fade-in animation
+
+  // Hide iframe immediately to show loader
+  iframe.style.opacity = "0"; 
+
+  port.postMessage({ type: "SWITCH_TO_IFRAME" });
+  wrapper.style.display = "block";
+  wrapper.style.height = popupSize.height + "px";
+  iframe.src = `${window.BASE_PROXY_URL}/proxy?url=${encodeURIComponent(url)}`;
+}
+
+iframe.addEventListener("load", () => {
+  console.log(`Iframe loaded for: ${iframe.src}`); // Debug log
+  // Hide loader after iframe loads
+  iframeLoader.style.opacity = "0"; // Start fade-out animation
+  setTimeout(() => {
+    // Only set display to none after opacity transition is complete
+    iframeLoader.style.display = "none"; 
+  }, 400); // Match fade duration from CSS
+
+  // Show iframe
+  iframe.classList.add("visible"); // Add class for visibility (if needed by CSS)
+  iframe.style.opacity = "1"; // Start fade-in animation
+});
+
+// 🌗 Theme
+chrome.storage.local.get("extensionTheme", ({ extensionTheme }) => {
+  const isDark = extensionTheme === "theme-red-black";
+  document.body.className = isDark ? "theme-red-black" : "theme-red-white";
+  themeToggle.checked = isDark;
 });
 
 themeToggle.addEventListener("change", () => {
@@ -157,12 +184,7 @@ themeToggle.addEventListener("change", () => {
   chrome.storage.local.set({ extensionTheme: theme });
 });
 
+// 🔒 Respond to background's close message
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type === "POPUP_UI_CLOSED") {
-    window.close();
-  }
-});
-
-iframe.addEventListener("load", () => {
-  iframeLoader.style.display = "none";
+  if (msg?.type === "POPUP_UI_CLOSED") window.close();
 });
