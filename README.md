@@ -119,6 +119,7 @@ window.BASE_PROXY_URL = location.hostname === "localhost"
 * 🔄 Animated iframe transitions and background
 * 🧼 Custom scrollbars, shadow effects
 * 🗑️ Clear history and cookies by domain
+* 👽 All redirects open within the iframe/popup itself.
 
 ---
 
